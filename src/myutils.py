@@ -125,3 +125,45 @@ def get_delay_im(na, window=100, stride=5, return_index=False, method='fft'):
         return _idx+window, corr
     return corr
 
+def gen_matrix(edges, data, value=None, func=[np.mean, np.std], return_labels=False, debug=False):
+    labels = np.array([np.digitize(d, e, right=True) for e,d in zip(edges, data)]) -1
+    _shape = [len(x)-1 for x in edges]
+    _shape.append(len(edges))
+    if debug:
+        print(_shape)
+    matrix = np.zeros(tuple(_shape))
+    mask = np.ones(matrix.shape[:-1])
+    if not value is None:
+        stats = np.zeros(tuple(_shape[:-1]+[len(func)]))
+    if debug:
+        print(data.shape, matrix.shape, labels.shape, mask.shape)
+        check = 0
+    for i in zip(*np.where(mask)):
+        _idx = np.arange(data.shape[-1])
+        for j, k in enumerate(i):
+            _tmp = np.where(labels[j][_idx]==k)[0]
+            _idx = _idx[_tmp]
+            if len(_idx)==0:
+                break
+        if len(_idx)==0:
+            continue
+        for j in range(len(i)):
+            _data = data[j][_idx]
+            if len(_data)>0:
+                matrix[i][j] = _data.mean()
+        if debug:
+            print(i, len(_idx), matrix[i], end='\n')
+            check += len(_idx)
+        if value is None:
+            continue
+        for j, _f in enumerate(func):
+            stats[i][j] = _f(value[_idx])
+    if debug:
+        print(check)
+    if return_labels:
+        if not value is None:
+            return matrix, stats, labels
+        return matrix, labels
+    if not value is None:
+        return matrix, stats
+    return matrix
